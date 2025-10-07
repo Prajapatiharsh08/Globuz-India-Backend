@@ -43,16 +43,16 @@ const contactRoutes = require('./routes/contactRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Allowed frontend domains
+// ✅ Allowed frontend domains
 const allowedOrigins = [
   'https://globuz.in',
-  'https://globuzindia.netlify.app'
+  'https://globuzindia.netlify.app',
 ];
 
-// CORS middleware
-app.use(cors({
+// ✅ CORS options
+const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (e.g., mobile apps, curl)
+    // Allow requests with no origin (like Postman)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
@@ -60,19 +60,21 @@ app.use(cors({
     }
     return callback(null, true);
   },
-  credentials: true // Optional, only if using cookies/auth
-}));
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // optional, only if you use cookies/auth
+};
 
-// Handle preflight requests
-app.options('*', cors());
+// ✅ Apply CORS middleware globally
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // handle preflight OPTIONS requests
 
 app.use(express.json());
 
-// Routes
+// ✅ API Routes
 app.use('/api', contactRoutes);
 
-// Start server
+// ✅ Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
-
