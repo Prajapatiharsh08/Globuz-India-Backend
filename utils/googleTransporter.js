@@ -1,35 +1,47 @@
-const nodemailer = require('nodemailer');
-const { google } = require('googleapis');
-require('dotenv').config();
+// utils/googleTransporter.js
+const { google } = require("googleapis");
 
-const {
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  GOOGLE_REFRESH_TOKEN,
-  EMAIL_USER,
-} = process.env;
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI; // e.g., "https://developers.google.com/oauthplayground"
+const REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN;
 
 const oAuth2Client = new google.auth.OAuth2(
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  'https://developers.google.com/oauthplayground'
+  CLIENT_ID,
+  CLIENT_SECRET,
+  REDIRECT_URI
 );
 
-oAuth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+oAuth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
 
-async function createTransporter() {
-  const accessToken = await oAuth2Client.getAccessToken();
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: EMAIL_USER,
-      clientId: GOOGLE_CLIENT_ID,
-      clientSecret: GOOGLE_CLIENT_SECRET,
-      refreshToken: GOOGLE_REFRESH_TOKEN,
-      accessToken: accessToken.token,
-    },
-  });
-}
+const sendEmail = async (to, subject, html) => {
+  try {
+    const gmail = google.gmail({ version: "v1", auth: oAuth2Client });
 
-module.exports = createTransporter;
+    const encodedMessage = Buffer.from(
+      `From: ${process.env.EMAIL_USER}\r\n` +
+      `To: ${to}\r\n` +
+      `Subject: ${subject}\r\n` +
+      `Content-Type: text/html; charset=UTF-8\r\n\r\n` +
+      `${html}`
+    )
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    const result = await gmail.users.messages.send({
+      userId: "me",
+      requestBody: {
+        raw: encodedMessage,
+      },
+    });
+
+    return result.data;
+  } catch (error) {
+    console.error("Error sending email via Gmail API:", error);
+    throw error;
+  }
+};
+
+module.exports = sendEmail;

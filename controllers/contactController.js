@@ -1,57 +1,49 @@
-const createTransporter = require('../utils/googleTransporter');
-require('dotenv').config();
 
-exports.sendContactEmail = async (req, res) => {
-  const { name, email, phone, message } = req.body;
 
-  if (!name || !email || !phone || !message) {
-    return res.status(400).json({ error: 'All fields are required' });
-  }
+const sendEmail = require("../utils/googleTransporter");
 
+const sendContactEmail = async (req, res) => {
   try {
-    const transporter = await createTransporter();
+    const { name, email, phone, message } = req.body;
 
-    // Admin Email
-    const adminMailOptions = {
-      from: process.env.EMAIL_USER,
-      to: process.env.ADMIN_EMAIL,
-      subject: `New Contact Us Submission from ${name}`,
-      html: `
-        <h2>New Contact Request</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone}</p>
-        <p><strong>Message:</strong></p>
-        <div style="border:1px solid #ddd; padding:10px;">${message}</div>
-      `,
-    };
-
-    await transporter.sendMail(adminMailOptions);
-
-    // User Confirmation Email
-    const userMailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: '✔ We’ve received your message — Globuz India',
-      html: `
-        <h2>Thank You, ${name}!</h2>
-        <p>Your message has been received. Our team will contact you shortly.</p>
-        <h3>Your Submitted Message:</h3>
-        <div style="border:1px solid #ddd; padding:10px;">${message}</div>
-        <p>For further questions, reply to this email or contact us at 
-        <a href="mailto:contact@Globuzindia.in">contact@Globuzindia.in</a>.</p>
-      `,
-    };
-
-    try {
-      await transporter.sendMail(userMailOptions);
-    } catch (err) {
-      console.warn('User email failed:', err.message);
+    if (!name || !email || !phone || !message) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
-    res.status(200).json({ message: 'Message sent successfully!' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ success: false, message: "Invalid email format" });
+    }
+
+    // Admin Email
+    const adminHtml = `
+      <div style="background:#f6f8fb; padding:20px; font-family:sans-serif;">
+        <h2>New Contact Submission</h2>
+        <p><b>Name:</b> ${name}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Phone:</b> ${phone}</p>
+        <p><b>Message:</b> ${message}</p>
+      </div>
+    `;
+
+    // User Confirmation Email
+    const userHtml = `
+      <div style="background:#f6f8fb; padding:20px; font-family:sans-serif;">
+        <h2>Thank You, ${name}</h2>
+        <p>We’ve received your message and our team will contact you soon.</p>
+        <p><b>Your Message:</b> ${message}</p>
+      </div>
+    `;
+
+    await sendEmail(process.env.ADMIN_EMAIL, `📥 New Contact Form Submission - ${name}`, adminHtml);
+    await sendEmail(email, "✅ We’ve received your message — Globuz India", userHtml);
+
+    res.status(200).json({ success: true, message: "Your message has been sent successfully!" });
   } catch (error) {
-    console.error('Admin email failed:', error.message);
-    res.status(500).json({ error: 'Failed to send message. Please try again later.' });
+    console.error("Error sending email:", error);
+    res.status(500).json({ success: false, message: "Failed to send message.", error: error.message });
   }
 };
+
+module.exports = { sendContactEmail };
+
