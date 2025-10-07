@@ -1,30 +1,35 @@
 const nodemailer = require('nodemailer');
+const { google } = require('googleapis');
 require('dotenv').config();
 
-const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE, // e.g., 'gmail'
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-  pool: true,                 // enable connection pooling
-  maxConnections: 5,          // max concurrent connections
-  maxMessages: 100,           // max messages per connection
-  rateLimit: true,            // enforce rate limit
-  tls: {
-    rejectUnauthorized: false, // allow self-signed certs if needed
-  },
-  connectionTimeout: 10000,    // 10 seconds
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
-});
+const {
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_REFRESH_TOKEN,
+  EMAIL_USER,
+} = process.env;
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('Mailer verification failed:', error);
-  } else {
-    console.log('Mailer is ready to send messages');
-  }
-});
+const oAuth2Client = new google.auth.OAuth2(
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  'https://developers.google.com/oauthplayground'
+);
 
-module.exports = transporter;
+oAuth2Client.setCredentials({ refresh_token: GOOGLE_REFRESH_TOKEN });
+
+async function createTransporter() {
+  const accessToken = await oAuth2Client.getAccessToken();
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      type: 'OAuth2',
+      user: EMAIL_USER,
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      refreshToken: GOOGLE_REFRESH_TOKEN,
+      accessToken: accessToken.token,
+    },
+  });
+}
+
+module.exports = createTransporter;
