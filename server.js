@@ -35,20 +35,44 @@
 //   console.log(`Server is running on port ${PORT}`)
 // })
 
-require('dotenv').config()
-const express = require('express')
-const cors = require('cors')
-const contactRoutes = require('./routes/contactRoutes')
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const contactRoutes = require('./routes/contactRoutes');
 
-const app = express()
-const PORT = process.env.PORT || 5000
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: ['https://globuz.in','https://globuzindia.netlify.app'] }))
+// Allowed frontend domains
+const allowedOrigins = [
+  'https://globuz.in',
+  'https://globuzindia.netlify.app'
+];
 
-app.use(express.json())
+// CORS middleware
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (e.g., mobile apps, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true // Optional, only if using cookies/auth
+}));
 
-app.use('/api', contactRoutes)
+// Handle preflight requests
+app.options('*', cors());
 
+app.use(express.json());
+
+// Routes
+app.use('/api', contactRoutes);
+
+// Start server
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+  console.log(`Server running on port ${PORT}`);
+});
+
