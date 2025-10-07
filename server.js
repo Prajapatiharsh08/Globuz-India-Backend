@@ -43,7 +43,7 @@ const contactRoutes = require('./routes/contactRoutes')
 const app = express()
 const PORT = process.env.PORT || 5000
 
-app.use(cors({ origin: ['https://globuz.in'] }))
+app.use(cors({ origin: ['https://globuz.in','https://globuzindia.netlify.app'] }))
 
 app.use(express.json())
 
